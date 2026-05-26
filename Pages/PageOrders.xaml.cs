@@ -1,0 +1,129 @@
+﻿using Shoes_shop.Database;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+
+namespace Shoes_shop.Pages
+{
+    public partial class PageOrders : Page
+    {
+        private List<Orders> _allOrders;
+
+        public PageOrders()
+        {
+            InitializeComponent();
+            Loaded += PageOrders_Loaded;
+            LoadOrders();
+            CheckRole();
+        }
+
+        private void PageOrders_Loaded(object sender, RoutedEventArgs e)
+        {
+            LoadOrders();
+        }
+
+        private void LoadOrders()
+        {
+            _allOrders = ConnectOdb.conObj.Orders
+                .Include("PickupPoints")
+                .Include("Users")
+                .Include("OrderStatuses")
+                .ToList();
+
+            LvOrders.ItemsSource = _allOrders;
+        }
+
+        private void RefreshOrders()
+        {
+            LvOrders.ItemsSource = null;
+            LvOrders.ItemsSource = _allOrders;
+        }
+
+        private void CheckRole()
+        {
+            var user = LoginWindow.CurrentUser;
+            if (user != null && user.UserRoles.RoleName.ToLower() == "администратор")
+            {
+                BtnAddOrder.Visibility = Visibility.Visible;
+                ColDeleteOrder.Width = 80;
+            }
+            else
+            {
+                BtnAddOrder.Visibility = Visibility.Collapsed;
+                ColDeleteOrder.Width = 0;
+            }
+        }
+
+        private void LvOrders_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.OriginalSource is Button) return;
+            if (LvOrders.SelectedItem == null) return;
+
+            var user = LoginWindow.CurrentUser;
+            if (user?.UserRoles.RoleName.ToLower() != "администратор") return;
+
+            var order = (Orders)LvOrders.SelectedItem;
+            FrameOdb.frameMain.Navigate(new PageEditOrder(order));
+            LvOrders.SelectedItem = null;
+        }
+
+        private void BtnAddOrder_Click(object sender, RoutedEventArgs e) =>
+            FrameOdb.frameMain.Navigate(new PageEditOrder(null));
+
+        private void BtnDeleteOrder_Click(object sender, RoutedEventArgs e)
+        {
+            var role = LoginWindow.CurrentUser?.UserRoles.RoleName?.ToLower();
+            if (role != "администратор") return;
+
+            var btn = sender as Button;
+            var orderNumberObj = btn?.Tag;
+            if (btn == null || orderNumberObj == null) return;
+
+            int orderNumber;
+            if (!int.TryParse(orderNumberObj.ToString(), out orderNumber)) return;
+
+            var hasItems = ConnectOdb.conObj.OrderItems
+                .Any(oi => oi.OrderNumber == orderNumber);
+
+            if (hasItems)
+            {
+                MessageBox.Show("Нельзя удалить заказ с товарами. Сначала удалите элементы заказа.",
+                    "Ошибка удаления", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show("Удалить заказ?", "Подтверждение",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var order = ConnectOdb.conObj.Orders
+                    .FirstOrDefault(o => o.OrderNumber == orderNumber);
+
+                if (order != null)
+                {
+                    ConnectOdb.conObj.Orders.Remove(order);
+                    ConnectOdb.conObj.SaveChanges();
+
+                    _allOrders.Remove(order);
+                    RefreshOrders();
+
+                    MessageBox.Show("Заказ удалён", "Успех",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnBack_Click(object sender, RoutedEventArgs e) =>
+            FrameOdb.frameMain.Navigate(new PageMain());
+    }
+}

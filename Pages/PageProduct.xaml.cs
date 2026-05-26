@@ -1,0 +1,226 @@
+﻿using Shoes_shop.Database;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Threading;
+using System.Windows.Navigation;
+
+namespace Shoes_shop.Pages
+{
+    public partial class PageProduct : Page
+    {
+        private List<Products> _allProducts;
+        private List<Suppliers> _suppliers;
+        private DispatcherTimer _styleTimer;
+
+        public PageProduct()
+        {
+            InitializeComponent();
+            LoadData();
+            CheckRole();
+
+            // Настройка и запуск таймера
+            _styleTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _styleTimer.Tick += (s, e) => ApplyVisualStyles();
+            _styleTimer.Start();
+        }
+
+        private void LoadData()
+        {
+            _allProducts = ConnectOdb.conObj.Products
+                .Include("ProductNamesDict")
+                .Include("ProductCategories")
+                .Include("Manufacturers")
+                .Include("Suppliers")
+                .ToList();
+
+            _suppliers = ConnectOdb.conObj.Suppliers.ToList();
+
+            // Добавляем виртуального поставщика "Все поставщики" с Id = 0
+            _suppliers.Insert(0, new Suppliers { Id = 0, SupplierName = "Все поставщики" });
+
+            CbSupplier.ItemsSource = _suppliers;
+            CbSupplier.DisplayMemberPath = "SupplierName";
+            CbSupplier.SelectedValuePath = "Id";
+            CbSupplier.SelectedIndex = 0;
+
+            UpdateProductList();
+        }
+
+        private void UpdateProductList()
+        {
+            if (_allProducts == null) return;
+
+            var filtered = _allProducts.AsEnumerable();
+
+            // Поиск
+            if (!string.IsNullOrWhiteSpace(TbSearch.Text))
+            {
+                var search = TbSearch.Text.ToLower();
+                filtered = filtered.Where(p =>
+                    p.Article.ToLower().Contains(search) ||
+                    (p.ProductNamesDict != null && p.ProductNamesDict.NameValue.ToLower().Contains(search)) ||
+                    (p.Description != null && p.Description.ToLower().Contains(search)));
+            }
+
+            // Фильтр по поставщику
+            if (CbSupplier.SelectedValue is int supplierId && supplierId > 0)
+            {
+                filtered = filtered.Where(p => p.SupplierId == supplierId);
+            }
+
+            // Сортировка
+            if (CbSort.SelectedItem != null)
+            {
+                if (CbSort.SelectedIndex == 0)
+                    filtered = filtered.OrderBy(p => p.StockQuantity);
+                else
+                    filtered = filtered.OrderByDescending(p => p.StockQuantity);
+            }
+
+            LvProducts.ItemsSource = filtered.ToList();
+            ApplyVisualStyles();
+        }
+
+        private void ApplyVisualStyles()
+        {
+            LvProducts.UpdateLayout();
+
+            foreach (var item in LvProducts.Items)
+            {
+                var listViewItem = (ListViewItem)LvProducts.ItemContainerGenerator.ContainerFromItem(item);
+                if (listViewItem == null) continue;
+
+                var product = (Products)item;
+
+                if (product.StockQuantity == 0)
+                {
+                    listViewItem.Background = Brushes.LightBlue;
+                }
+                else if (product.DiscountPercent > 15)
+                {
+                    listViewItem.Background = (Brush)new BrushConverter().ConvertFromString("#2E8B57");
+                    listViewItem.Foreground = Brushes.White;
+                }
+            }
+        }
+
+        private void CheckRole()
+        {
+            var user = LoginWindow.CurrentUser;
+
+            if (user == null) return;
+
+            var role = user.UserRoles.RoleName.ToLower();
+
+            if (role == "менеджер" || role == "администратор")
+            {
+                SpControls.Visibility = Visibility.Visible;
+            }
+
+            if (role == "администратор")
+            {
+                BtnAddProduct.Visibility = Visibility.Visible;
+                ColDelete.Width = 80;
+            }
+        }
+
+        private void TbSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateProductList();
+        }
+
+        private void CbSupplier_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateProductList();
+        }
+
+        private void CbSort_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateProductList();
+        }
+
+        private void LvProducts_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LvProducts.SelectedItem == null) return;
+
+            var user = LoginWindow.CurrentUser;
+            if (user?.UserRoles.RoleName.ToLower() != "администратор") return;
+
+            var product = (Products)LvProducts.SelectedItem;
+            FrameOdb.frameMain.Navigate(new PageEditNew(product));
+            LvProducts.SelectedItem = null;
+        }
+
+        private void BtnAddProduct_Click(object sender, RoutedEventArgs e)
+        {
+            FrameOdb.frameMain.Navigate(new PageEditNew(null));
+        }
+
+        private void BtnDeleteProduct_Click(object sender, RoutedEventArgs e)
+        {
+            // Проверяем права администратора
+            var role = LoginWindow.CurrentUser?.UserRoles.RoleName?.ToLower();
+            if (role != "администратор") return;
+
+            var btn = sender as Button;
+            var article = btn?.Tag as string;
+
+            if (btn == null || string.IsNullOrEmpty(article)) return;
+
+            // Проверяем, есть ли товар в заказах
+            var hasOrders = ConnectOdb.conObj.OrderItems
+                .Any(oi => oi.ProductArticle == article);
+
+            if (hasOrders)
+            {
+                MessageBox.Show("Нельзя удалить товар, который присутствует в заказах",
+                    "Ошибка удаления", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Подтверждение удаления
+            var result = MessageBox.Show("Удалить товар?", "Подтверждение",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                // Удаляем товар из БД
+                var product = ConnectOdb.conObj.Products
+                    .FirstOrDefault(p => p.Article == article);
+
+                if (product != null)
+                {
+                    ConnectOdb.conObj.Products.Remove(product);
+                    ConnectOdb.conObj.SaveChanges();
+
+                    // Обновляем локальную коллекцию и список
+                    _allProducts.Remove(product);
+                    UpdateProductList();
+
+                    MessageBox.Show("Товар удалён", "Успех",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnBack_Click(object sender, RoutedEventArgs e)
+        {
+            _styleTimer?.Stop();
+            FrameOdb.frameMain.Navigate(new PageMain());
+        }
+    }
+}

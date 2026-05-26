@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="ba4a33c35cf94387b8d69a0cbbfdca23" Name="Diagram1" ZoomLevel="72">
+        <EntityTypeShape EntityType="ShopDatabaseModel.Manufacturers" Width="1.5" PointX="0.75" PointY="2.25" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.OrderItems" Width="1.5" PointX="7.75" PointY="2" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.Orders" Width="1.5" PointX="7.75" PointY="8.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.OrderStatuses" Width="1.5" PointX="11.125" PointY="10" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.PickupPoints" Width="1.5" PointX="5.5" PointY="8.625" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.ProductCategories" Width="1.5" PointX="0.75" PointY="5.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.ProductNamesDict" Width="1.5" PointX="0.75" PointY="7.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.Products" Width="1.5" PointX="3" PointY="1" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.Suppliers" Width="1.5" PointX="0.75" PointY="10.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.sysdiagrams" Width="1.5" PointX="11.25" PointY="5.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.UserRoles" Width="1.5" PointX="6.25" PointY="15.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="ShopDatabaseModel.Users" Width="1.5" PointX="5.5" PointY="11.625" IsExpanded="true" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Products_Manufacturers" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_OrderItems_Orders" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_OrderItems_Products" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Orders_PickupPoints" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Orders_Statuses" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Orders_Users" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Products_Categories" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Products_Names" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Products_Suppliers" ManuallyRouted="false" />
+        <AssociationConnector Association="ShopDatabaseModel.FK_Users_Roles" ManuallyRouted="false" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>

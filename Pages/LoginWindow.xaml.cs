@@ -1,0 +1,59 @@
+﻿using Shoes_shop.Database;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+
+namespace Shoes_shop.Pages
+{
+    /// <summary>
+    /// Логика взаимодействия для LoginWindow.xaml
+    /// </summary>
+    public partial class LoginWindow : Page
+    {
+        public static Users CurrentUser { get; set; }
+
+        public LoginWindow()
+        {
+            InitializeComponent();
+        }
+
+        private void BtnLogin_Click(object sender, RoutedEventArgs e)
+        {
+            var user = ConnectOdb.conObj.Users
+                .FirstOrDefault(u => u.Login == TbLogin.Text && u.PasswordHash == PbPassword.Password);
+
+            if (user != null)
+            {
+                CurrentUser = user;
+                FrameOdb.frameMain.Navigate(new PageMain());
+            }
+            else
+            {
+                MessageBox.Show("Неверный логин или пароль", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnGuest_Click(object sender, RoutedEventArgs e)
+        {
+            CurrentUser = null;
+            FrameOdb.frameMain.Navigate(new PageMain());
+        }
+
+        private void TbLogin_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
+    }
+}
